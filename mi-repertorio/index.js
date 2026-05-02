@@ -31,77 +31,42 @@ app.get("/canciones", (req, res) => {
 
 // POST 
 app.post("/canciones", (req, res) => {
-    console.log("Artista:", req.body.artista);
-    const { id, titulo, artista, tono } = req.body;
-
+  const { id, titulo, artista, tono } = req.body;
+  
   if (!id || !titulo || !artista || !tono) {
-    return res.status(400).send("Faltan datos");
+    return res.status(400).json({ error: "Todos los campos son requeridos" });
   }
-
+  
   try {
     const data = fs.readFileSync("repertorio.json", "utf-8");
     const canciones = JSON.parse(data);
-    
-  
-    const existe = canciones.some(c => c.id == id);
-    if (existe) {
-      return res.status(400).send("Ya existe una canción con ese ID");
-    }
-    
     canciones.push(req.body);
     fs.writeFileSync("repertorio.json", JSON.stringify(canciones, null, 2));
-    res.status(201).send("Canción agregada");
+    res.status(201).json({ mensaje: "Canción agregada", cancion: req.body });
   } catch (error) {
-    res.status(500).send("Error al procesar la solicitud");
+    res.status(500).json({ error: "Error al guardar" });
   }
 });
 
 // PUT 
 app.put("/canciones/:id", (req, res) => {
-    const { id } = req.params;
-    const nuevaData = req.body;
-
-    if (!nuevaData.titulo || !nuevaData.artista || !nuevaData.tono) {
-    return res.status(400).json({ 
-      error: "Faltan datos requeridos",
-      required: ["titulo", "artista", "tono"],
-      received: nuevaData
-    });
-  }
+  const { id } = req.params;
+  const nuevaData = req.body;
   
   try {
     const data = fs.readFileSync("repertorio.json", "utf-8");
     let canciones = JSON.parse(data);
+    const index = canciones.findIndex(c => c.id == id);
     
-  
-    const index = canciones.findIndex((c) => c.id == id);
     if (index === -1) {
-      return res.status(404).json({ 
-        error: "Canción no encontrada",
-        id_buscado: id
-      });
+      return res.status(404).json({ error: "Canción no encontrada" });
     }
     
-    const cancionActualizada = {
-      ...nuevaData,
-      id: id, 
-    };
-    
-    canciones[index] = cancionActualizada;
-    
-    fs.writeFileSync("repertorio.json", JSON.stringify(canciones, null));
-    
-    console.log("Canción actualizada exitosamente:", cancionActualizada);
-    
-    res.json({
-      mensaje: "Canción actualizada correctamente",
-      cancion: cancionActualizada,
-      modificada_en: new Date().toISOString()
-    });
-    
+    canciones[index] = { ...nuevaData, id };
+    fs.writeFileSync("repertorio.json", JSON.stringify(canciones, null, 2));
+    res.json({ mensaje: "Canción actualizada", cancion: canciones[index] });
   } catch (error) {
-    console.error("Error en PUT:", error);
-    res.status(500).json({ error: "Error al actualizar la canción" });
+    res.status(500).json({ error: "Error al actualizar" });
   }
 });
 
