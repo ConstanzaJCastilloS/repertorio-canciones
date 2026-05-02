@@ -8,19 +8,19 @@ app.use(express.json());
 app.use(cors());
 
 app.use((req, res, next) => {
-  console.log(req.method, req.url);
-  next();
+    console.log(req.method, req.url);
+    next();
 });
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../front/index.html"));
+    res.sendFile(path.join(__dirname, "../front/index.html"));
 });
 
 
 
 // GET 
 app.get("/canciones", (req, res) => {
-  try {
+    try {
     const data = fs.readFileSync("repertorio.json", "utf-8");
     const canciones = JSON.parse(data);
     res.json(canciones);
@@ -31,7 +31,8 @@ app.get("/canciones", (req, res) => {
 
 // POST 
 app.post("/canciones", (req, res) => {
-  const { id, titulo, artista, tono } = req.body;
+    console.log("Artista:", req.body.artista);
+    const { id, titulo, artista, tono } = req.body;
 
   if (!id || !titulo || !artista || !tono) {
     return res.status(400).send("Faltan datos");
@@ -57,41 +58,72 @@ app.post("/canciones", (req, res) => {
 
 // PUT 
 app.put("/canciones/:id", (req, res) => {
-  const { id } = req.params;
-  const nuevaData = req.body;
+    const { id } = req.params;
+    const nuevaData = req.body;
 
+    if (!nuevaData.titulo || !nuevaData.artista || !nuevaData.tono) {
+    return res.status(400).json({ 
+      error: "Faltan datos requeridos",
+      required: ["titulo", "artista", "tono"],
+      received: nuevaData
+    });
+  }
+  
   try {
     const data = fs.readFileSync("repertorio.json", "utf-8");
     let canciones = JSON.parse(data);
-
+    
+  
     const index = canciones.findIndex((c) => c.id == id);
-
     if (index === -1) {
-      return res.status(404).send("Canción no encontrada");
+      return res.status(404).json({ 
+        error: "Canción no encontrada",
+        id_buscado: id
+      });
     }
-
-    canciones[index] = nuevaData;
-    fs.writeFileSync("repertorio.json", JSON.stringify(canciones, null, 2));
-    res.send("Canción actualizada");
+    
+    const cancionActualizada = {
+      ...nuevaData,
+      id: id, 
+    };
+    
+    canciones[index] = cancionActualizada;
+    
+    fs.writeFileSync("repertorio.json", JSON.stringify(canciones, null));
+    
+    console.log("Canción actualizada exitosamente:", cancionActualizada);
+    
+    res.json({
+      mensaje: "Canción actualizada correctamente",
+      cancion: cancionActualizada,
+      modificada_en: new Date().toISOString()
+    });
+    
   } catch (error) {
-    res.status(500).send("Error al procesar la solicitud");
+    console.error("Error en PUT:", error);
+    res.status(500).json({ error: "Error al actualizar la canción" });
   }
 });
 
 // DELETE 
-app.delete("/canciones/:id", (req, res) => {
-  const { id } = req.params;
-
+app.delete("/canciones", (req, res) => {
+  const { id } = req.query;  
+  console.log("ID recibido por queryString:", id);
+  
+  if (!id) {
+    return res.status(400).send("Se requiere el parámetro 'id' en la queryString");
+  }
+  
   try {
     const data = fs.readFileSync("repertorio.json", "utf-8");
     let canciones = JSON.parse(data);
-
+    
     const nuevaLista = canciones.filter((c) => c.id != id);
-
+    
     if (canciones.length === nuevaLista.length) {
       return res.status(404).send("Canción no encontrada");
     }
-
+    
     fs.writeFileSync("repertorio.json", JSON.stringify(nuevaLista, null, 2));
     res.send("Canción eliminada");
   } catch (error) {
@@ -101,5 +133,5 @@ app.delete("/canciones/:id", (req, res) => {
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log("Servidor corriendo en http://localhost:" + PORT);
+    console.log("Servidor corriendo en http://localhost:" + PORT);
 });
